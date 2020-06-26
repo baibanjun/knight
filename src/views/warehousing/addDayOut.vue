@@ -4,8 +4,20 @@
 			<el-form class="demo-form-inline" label-width="140px" ref="ruleForm" :rules="rules" :model="info">
 				<el-row>
 					<el-col :span="8">
+            
 						<el-form-item label="车牌号:" prop="plate_number">
-              <el-input v-model.trim="info.plate_number"></el-input>
+              <el-autocomplete
+                popper-class="my-autocomplete"
+                v-model="info.plate_number"
+                :fetch-suggestions="searchDriver"
+                placeholder="请输入车牌号"
+                @select="handleSelectDriver"
+              >
+                <template slot-scope="{ item }">
+                  <div class="name">{{ item.license_plate_number }}</div>
+                  <span class="label">{{ item.name }}( {{ item.mobile}} )</span>
+                </template>
+              </el-autocomplete>
 						</el-form-item>
 					</el-col>
 					<el-col :span="8">
@@ -79,7 +91,18 @@
         <el-row>
         	<el-col :span="8">
         		<el-form-item label="公司名称:">
-              <el-input v-model.trim="info.company_name"></el-input>
+              <el-autocomplete
+                popper-class="my-autocomplete"
+                v-model="info.company_name"
+                :fetch-suggestions="searchCompany"
+                placeholder="请输入公司名称"
+                @select="handleSelectCompany"
+              >
+                <template slot-scope="{ item }">
+                  <div class="name">{{ item.name }}</div>
+                  <span class="label">{{ item.contacts }}( {{ item.mobile}} )</span>
+                </template>
+              </el-autocomplete>
         		</el-form-item>
         	</el-col>
         	<el-col :span="8">
@@ -127,14 +150,14 @@
           "driver":"",
           "phone":"",
           "recycle_type":'2', //回收类别：\n 1：餐厨垃圾\n 2：红油\n 3：地沟油\n 4：固渣\n
-          "create_time":"2019-11-07 16:14:33",
-          "rough_weight":100,
-          "tare_weight":50,
+          "create_time":"",
+          "rough_weight":"",
+          "tare_weight":"",
           "update_reason":"",
           "type":'1', //交易方式 1:送货 2:自提
-          "out_oil_content":'0', //出库含油率
-          "delivery_oil_content":'0', //到货含油率
-          "settle_oil_content":'0', //结算含油率
+          "out_oil_content":'', //出库含油率
+          "delivery_oil_content":'', //到货含油率
+          "settle_oil_content":'', //结算含油率
           "company_name":"",
           "contacts":"",
           "mobile":"",
@@ -187,12 +210,41 @@
 			//返回
 			back:function(){
 				this.$router.push("/warehousing/stock")
-			}
+			},
+      searchDriver:function(queryString, cb){
+        let _self = this
+        if(queryString){
+          axios_post('api/stock/search_driver',{license_plate_number:queryString,name:'',mobile:''}).then( res => {
+            cb(res)
+          })
+        }
+      },
+      handleSelectDriver:function(value){
+        let _self = this
+        _self.info.plate_number = value.license_plate_number
+        _self.info.driver = value.name
+        _self.info.phone = value.mobile
+      },
+      searchCompany:function(queryString, cb){
+        let _self = this
+        if(queryString){
+          axios_post('api/stock/search_company',{name:queryString , mobile:'',contact:'',address:''}).then( res => {
+            cb(res)
+          })
+        }
+      },
+      handleSelectCompany:function(value){
+        let _self = this
+        _self.info.company_name = value.name
+        _self.info.contacts = value.contacts
+        _self.info.mobile = value.mobile
+        _self.info.address = value.address
+      }
 		}
 	}
 </script>
 
-<style scoped>
+<style scoped lang="less">
   hr{
     margin-bottom:25px ;
   }
@@ -202,4 +254,16 @@
 		box-shadow: 0 0 5px #ccc;
 		padding: 30px 20px;
 	}
+  .my-autocomplete li{
+      padding: 7px;
+      line-height: 25px !important;
+  }
+  .my-autocomplete li .name{
+      text-overflow: ellipsis;
+      overflow: hidden;
+  }
+  .my-autocomplete li .label{
+      font-size: 12px;
+      color: #b4b4b4;
+  }
 </style>

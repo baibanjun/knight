@@ -11,7 +11,18 @@
         <el-row>
           <el-col :span="8">
             <el-form-item label="车牌号:">
-              <el-input v-model.trim="info.plate_number"></el-input>
+              <el-autocomplete
+                popper-class="my-autocomplete"
+                v-model="info.plate_number"
+                :fetch-suggestions="searchDriver"
+                placeholder="请输入车牌号"
+                @select="handleSelectDriver"
+              >
+                <template slot-scope="{ item }">
+                  <div class="name">{{ item.license_plate_number }}</div>
+                  <span class="label">{{ item.name }}( {{ item.mobile}} )</span>
+                </template>
+              </el-autocomplete>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -340,38 +351,65 @@ export default {
     //时间戳格式化
     time_format: function(req) {
       return time_format({ time: req });
+    },
+    searchDriver:function(queryString, cb){
+      let _self = this
+      if(queryString){
+        axios_post('api/stock/search_driver',{license_plate_number:queryString,name:'',mobile:''}).then( res => {
+          cb(res)
+        })
+      }
+    },
+    handleSelectDriver:function(value){
+      let _self = this
+      _self.info.plate_number = value.license_plate_number
+      _self.info.driver = value.name
+      _self.info.phone = value.mobile
     }
   }
 };
 </script>
 
-<style >
-.el-radio__input.is-checked + .el-radio__label {
-  color: #000;
-  font-size: 16px;
-}
-.out_info_box {
-  margin-left: 5%;
-  width: 80%;
-  box-shadow: 0 0 5px #ccc;
-  padding: 30px 20px;
-}
-.el-table >>> .cell {
-  text-align: center;
-}
-.el-table >>> th {
-  padding: 4px 0;
-}
-#print_info p span {
-  padding: 0 20px;
-}
-#print_info table {
-  width: 100%;
-}
-#print_info table td,
-#print_info table th {
-  border: 1px solid #ccc;
-  padding: 10px 20px;
-  text-align: center;
-}
+<style scoped>
+  .el-radio__input.is-checked + .el-radio__label {
+    color: #000;
+    font-size: 16px;
+  }
+  .out_info_box {
+    margin-left: 5%;
+    width: 80%;
+    box-shadow: 0 0 5px #ccc;
+    padding: 30px 20px;
+  }
+  .el-table >>> .cell {
+    text-align: center;
+  }
+  .el-table >>> th {
+    padding: 4px 0;
+  }
+  #print_info p span {
+    padding: 0 20px;
+  }
+  #print_info table {
+    width: 100%;
+  }
+  #print_info table td,
+  #print_info table th {
+    border: 1px solid #ccc;
+    padding: 10px 20px;
+    text-align: center;
+  }
+
+  .my-autocomplete li{
+      padding: 7px;
+      line-height: 25px !important;
+  }
+  .my-autocomplete li .name{
+      text-overflow: ellipsis;
+      overflow: hidden;
+  }
+  .my-autocomplete li .label{
+      font-size: 12px;
+      color: #b4b4b4;
+  }
 </style>

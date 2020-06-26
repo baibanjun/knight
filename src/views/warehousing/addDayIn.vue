@@ -5,7 +5,18 @@
 				<el-row>
 					<el-col :span="8">
 						<el-form-item label="车牌号:" prop="plateNumber">
-              <el-input v-model.trim="info.plateNumber"></el-input>
+              <el-autocomplete
+                popper-class="my-autocomplete"
+                v-model="info.plateNumber"
+                :fetch-suggestions="searchDriver"
+                placeholder="请输入车牌号"
+                @select="handleSelectDriver"
+              >
+                <template slot-scope="{ item }">
+                    <div class="name">{{ item.license_plate_number }}</div>
+                    <span class="label">{{ item.name }}( {{ item.mobile}} )</span>
+                  </template>
+              </el-autocomplete>
 						</el-form-item>
 					</el-col>
 					<el-col :span="8">
@@ -140,7 +151,21 @@
 			//返回
 			back:function(){
 				this.$router.push("/warehousing/stock")
-			}
+			},
+      searchDriver:function(queryString, cb){
+        let _self = this
+        if(queryString){
+          axios_post('api/stock/search_driver',{license_plate_number:queryString,name:'',mobile:''}).then( res => {
+            cb(res)
+          })
+        }
+      },
+      handleSelectDriver:function(value){
+        let _self = this
+        _self.info.plateNumber = value.license_plate_number
+        _self.info.driver = value.name
+        _self.info.phone = value.mobile
+      },
 		}
 	}
 </script>
@@ -152,4 +177,16 @@
 		box-shadow: 0 0 5px #ccc;
 		padding: 30px 20px;
 	}
+  .my-autocomplete li{
+      padding: 7px;
+      line-height: 25px !important;
+  }
+  .my-autocomplete li .name{
+      text-overflow: ellipsis;
+      overflow: hidden;
+  }
+  .my-autocomplete li .label{
+      font-size: 12px;
+      color: #b4b4b4;
+  }
 </style>
