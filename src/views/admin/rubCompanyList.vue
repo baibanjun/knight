@@ -26,8 +26,14 @@
 			<el-form-item>
 				<el-button type="primary" icon="el-icon-search" @click="search(1)">查询</el-button>
         <el-button type="warning" icon="el-icon-plus" @click="add_company()">新增单位</el-button>
-				<el-button type="success" icon="el-icon-download" @click="leadingOut()">导出数据</el-button>
+				<el-button type="success" icon="el-icon-download" @click="leadingOut()">导出单位数据</el-button>
 			</el-form-item>
+      <el-form-item label="导出日期">
+        <el-date-picker v-model="month" type="month" placeholder="选择月份" value-format="yyyy-MM"></el-date-picker>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="danger" icon="el-icon-download" @click="leadingOutAll()">导出所有记录</el-button>
+      </el-form-item>
 		</el-form>
 
 		<el-table :data="list" border style="width: 100%">
@@ -94,6 +100,7 @@
         area_list:[], //区域列表
         cityId:'',
         total:1,
+        month:'',
 				search_info:{
 					page:1,
 					limit:10,
@@ -105,6 +112,18 @@
 				}
 			}
 		},
+    created() {
+      //获取当前月
+      var date = new Date();
+      var seperator = "-";
+      var year = date.getFullYear();
+      var month = date.getMonth() + 1;
+      if (month >= 1 && month <= 9) {
+          month = "0" + month;
+      }
+      var currentmonth = year + seperator + month
+      this.month = currentmonth
+    },
 		mounted() {
 			var _self = this
       //初始化值
@@ -148,6 +167,16 @@
       // 导出
       leadingOut:function() {
         window.open(baseURL+'/api/admin/rubbish_company/export?'+'token='+ this.$store.state.token+'&company_name='+this.search_info.company_name+'&company_contacts='+this.search_info.company_contacts+'&mobile='+this.search_info.mobile+'&area_id='+this.search_info.area_id);
+      },
+      leadingOutAll:function(){
+        var _self = this
+        if(_self.month == ""){
+          return
+        }
+        _self.$confirm('确认导出所有单位的收运记录？').then(() => {
+          window.open(baseURL+'/api/admin/rubbish_company/all_records_export?'+'token='+ this.$store.state.token+'&month='+this.month);
+        })
+          
       },
 			handleEdit:function(_id){
 				this.$store.commit('admin_rub_company',{_id:_id})
