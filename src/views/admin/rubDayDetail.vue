@@ -63,6 +63,9 @@
             <el-table-column prop="weight" label="台账量(kg)"></el-table-column>
           </el-table>
 				</el-form-item>
+        <el-form-item label="">
+          <el-button type="primary" @click="add_books" icon="el-icon-plus">添加台账</el-button>
+        </el-form-item>
         <el-form-item label="行驶路线图:">
           <span  v-show="!has_map">暂无路线图</span>
           <div  id="driver_map" v-show="has_map"></div>
@@ -118,12 +121,40 @@
       		<el-button type="primary" @click="print()">确认打印</el-button>
       	</span>
       </el-dialog>
+      <!--打印-->
+      <el-dialog
+        width="30%"
+        title="添加台账"
+        :visible.sync="books_status"
+        :close-on-click-modal="false"
+        :show-close="false"
+        append-to-body>
+        <div>
+          <el-form label-width="100px">
+              <el-form-item label="车牌号:">
+                <el-tag type="info">{{info.plateNumber}}</el-tag>
+              </el-form-item>
+              <el-form-item label="台账量(kg):">
+                <el-input v-model.trim="books_req.weight"></el-input>
+              </el-form-item>
+              <el-form-item label="单位名称:">
+                <el-select v-model="books_req.companyId">
+                  <el-option :label="n.name" :value="n.id" v-for="n in company_list"></el-option>
+                </el-select>
+              </el-form-item>
+          </el-form>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="books_status = false">取 消</el-button>
+          <el-button type="primary" @click="confirmAddBooks()">确认添加</el-button>
+        </span>
+      </el-dialog>
 		</div>
 	</div>
 </template>
 
 <script>
-	import { axios_get,axios_put } from '@/api/main'
+	import { axios_get,axios_put,axios_post } from '@/api/main'
 	import { checkNull,checkPhone,checkFlexd,time_format } from '@/lib/tools'
 	export default{
 		data(){
@@ -143,6 +174,12 @@
 				},
         has_map:true,
         print_status:false,
+        books_status:false,
+        books_req:{
+          companyId:"",
+          weight:null,
+        },
+        company_list:[],
         rules:{
         	driver:[
         		{ required: true,validator: checkNull, trigger: 'blur' }
@@ -176,62 +213,65 @@
 		},
     mounted() {
       var _self = this
-      axios_get('api/admin/rubbish_day/'+_self.rub_day_id).then(res => {
+      _self.getInfo()
+      //单位表
+      axios_get('api/admin/rubbish_company',{page:1,limit:1000,}).then(res => {
         if(res){
-          _self.info = res
-          _self.info.recycleType += '' //字符串化
-          if(!res.standingBooks||res.standingBooks.length<2){
-            _self.has_map = false
-            return
-          }
-          var map = new BMap.Map("driver_map");
-          map.centerAndZoom(new BMap.Point(116.404, 39.915), 13);
-          map.clearOverlays();                        //清除地图上所有的覆盖物
-          var driving = new BMap.DrivingRoute(map);    //创建驾车实例
-          // 坐标点数据
-          // var pointArr = [
-          //   {lng: 120.27330074071, lat: 31.498294737149},
-          //   {lng: 120.57330074071, lat: 31.498294737149},
-          //   {lng: 120.87330074071, lat: 31.498294737149},
-          //   {lng: 121.37330074071, lat: 31.498294737149},
-          //   ];
-
-          var pointArr = res.standingBooks
-          // 生成坐标点
-          var trackPoint = [];
-          for (var i = 0, j = pointArr.length; i < j; i++) {
-            trackPoint.push(new BMap.Point(pointArr[i].lng, pointArr[i].lat));
-          }
-          for (var i = 0; i < trackPoint.length; i++) {
-            if(i != trackPoint.length -1 ){
-              driving.search(trackPoint[i], trackPoint[i+1]);
-            }
-          }
-          driving.setSearchCompleteCallback(function(){
-            var pts = driving.getResults().getPlan(0).getRoute(0).getPath();    //通过驾车实例，获得一系列点的数组
-            var polyline = new BMap.Polyline(pts);
-            map.addOverlay(polyline);
-
-            // 画图标、想要展示的起点终点途经点
-            for (var i = 0; i < trackPoint.length; i++) {
-              var lab;
-                if(i == 0){
-                  lab = new BMap.Label("起点",{position:trackPoint[i]});
-                  }else if(i == trackPoint.length - 1){
-                    lab = new BMap.Label("终点",{position:trackPoint[i]});
-                  }else{
-                    /* lab = new BMap.Label("途径点",{position:trackPoint[i]}) */
-                  }
-                var marker = new BMap.Marker(trackPoint[i])
-                map.addOverlay(marker);
-                map.addOverlay(lab);
-            }
-            map.setViewport(trackPoint);
-          });
+          _self.company_list = res.list
         }
       })
     },
 		methods:{
+      getInfo:function(){
+        var _self = this
+        axios_get('api/admin/rubbish_day/'+_self.rub_day_id).then(res => {
+          if(res){
+            _self.info = res
+            _self.info.recycleType += '' //字符串化
+            if(!res.standingBooks||res.standingBooks.length<2){
+              _self.has_map = false
+              return
+            }
+            var map = new BMap.Map("driver_map");
+            map.centerAndZoom(new BMap.Point(116.404, 39.915), 13);
+            map.clearOverlays();                        //清除地图上所有的覆盖物
+            var driving = new BMap.DrivingRoute(map);    //创建驾车实例
+
+            var pointArr = res.standingBooks
+            // 生成坐标点
+            var trackPoint = [];
+            for (var i = 0, j = pointArr.length; i < j; i++) {
+              trackPoint.push(new BMap.Point(pointArr[i].lng, pointArr[i].lat));
+            }
+            for (var i = 0; i < trackPoint.length; i++) {
+              if(i != trackPoint.length -1 ){
+                driving.search(trackPoint[i], trackPoint[i+1]);
+              }
+            }
+            driving.setSearchCompleteCallback(function(){
+              var pts = driving.getResults().getPlan(0).getRoute(0).getPath();    //通过驾车实例，获得一系列点的数组
+              var polyline = new BMap.Polyline(pts);
+              map.addOverlay(polyline);
+
+              // 画图标、想要展示的起点终点途经点
+              for (var i = 0; i < trackPoint.length; i++) {
+                var lab;
+                  if(i == 0){
+                    lab = new BMap.Label("起点",{position:trackPoint[i]});
+                    }else if(i == trackPoint.length - 1){
+                      lab = new BMap.Label("终点",{position:trackPoint[i]});
+                    }else{
+                      /* lab = new BMap.Label("途径点",{position:trackPoint[i]}) */
+                    }
+                  var marker = new BMap.Marker(trackPoint[i])
+                  map.addOverlay(marker);
+                  map.addOverlay(lab);
+              }
+              map.setViewport(trackPoint);
+            });
+          }
+        })
+      },
 			handleEdit:function(){
 				var _self = this
         _self.$refs['ruleForm'].validate((valid) => {
@@ -269,6 +309,11 @@
         var _self = this
         _self.print_status = true
       },
+      //打印弹窗
+      add_books:function(){
+        var _self = this
+        _self.books_status = true
+      },
       //打印入库单
       print:function(){
         var _self = this
@@ -280,6 +325,25 @@
             window.document.body.innerHTML=prnhtml;
             window.print();
             window.location.reload();
+          }
+        })
+      },
+      confirmAddBooks:function(){
+        var _self = this
+        var req = {stockId:_self.info.id,plateNumber:_self.info.plateNumber}
+        req = Object.assign(req,_self.books_req);
+        if(req.weight<=0 || !req.companyId){
+          _self.$message.error({
+             message: '数据有误,请检查后提交',
+             offset:150
+          })
+          return
+        }
+        axios_post('api/admin/rubbish_day/book',req).then( res => {
+          if(res){
+            _self.books_status = false
+            _self.books_req = {companyId:"",weight:null}
+            _self.getInfo()
           }
         })
       }
